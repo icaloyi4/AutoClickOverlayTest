@@ -75,13 +75,16 @@ class FloatingClickService : Service() {
         if (isOn) {
             timer?.cancel()
         } else {
-//            timer = fixedRateTimer(initialDelay = 0,
-//                    period = 1000) {
-//                view.getLocationOnScreen(location)
-//                autoClickService?.click(location[0] + view.right + 10,
-//                        location[1] + view.bottom + 10)
-//            }
-            Toast.makeText(this, "click ${location[0] + view.right + 10} ${location[1] + view.bottom + 10}", Toast.LENGTH_SHORT).show()
+            timer = fixedRateTimer(initialDelay = 0,
+                    period = 1000) {
+                view.getLocationOnScreen(location)
+                autoClickService?.click(location[0] + view.right + 10,
+                        location[1] + view.bottom + 10)
+                timer?.cancel()
+                isOn = !isOn
+                (view as TextView).text = if (isOn) "ON" else "OFF"
+            }
+//            Toast.makeText(this, "click ${location[0] + view.right + 10} ${location[1] + view.bottom + 10}", Toast.LENGTH_SHORT).show()
         }
         isOn = !isOn
         (view as TextView).text = if (isOn) "ON" else "OFF"

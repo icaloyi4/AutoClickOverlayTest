@@ -12,14 +12,31 @@ import androidx.appcompat.app.AppCompatActivity
 import android.provider.Settings
 import android.view.accessibility.AccessibilityManager
 import android.widget.Button
+import android.widget.TextView
+import android.widget.TimePicker
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import com.example.alarmmanager.utils.SharedData
 import com.example.autoclickcoba.service.FloatingClickService
 import com.example.autoclickcoba.service.autoClickService
+import java.util.*
+import kotlin.concurrent.fixedRateTimer
+import android.text.TextUtils
+
+import android.accessibilityservice.AccessibilityService
+import android.provider.Settings.SettingNotFoundException
+import android.text.TextUtils.SimpleStringSplitter
+import com.example.autoclickcoba.service.WhatsappAccessibilityService
+
+
+
+
 
 private const val PERMISSION_CODE = 110
 
 class MainActivity : AppCompatActivity() {
 
+    lateinit var timePicker : TimePicker
     private var serviceIntent: Intent? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -37,6 +54,59 @@ class MainActivity : AppCompatActivity() {
                 shortToast("You need System Alert Window Permission to do this")
             }
         }
+        timePicker = findViewById(R.id.timepicker)
+
+        findViewById<Button>(R.id.btn_set_alarm).setOnClickListener {
+            // Do some work here
+            val calendar: Calendar = Calendar.getInstance()
+            if (Build.VERSION.SDK_INT >= 23) {
+                calendar.set(
+                    calendar.get(Calendar.YEAR),
+                    calendar.get(Calendar.MONTH),
+                    calendar.get(Calendar.DAY_OF_MONTH),
+                    timePicker.hour,
+                    timePicker.minute,
+                    0
+                )
+            } else {
+                calendar.set(
+                    calendar.get(Calendar.YEAR),
+                    calendar.get(Calendar.MONTH),
+                    calendar.get(Calendar.DAY_OF_MONTH),
+                    timePicker.currentHour,
+                    timePicker.currentMinute,
+                    0
+                )
+            }
+
+
+
+            val sharedData = SharedData(this)
+            sharedData.setDataLong("myAlarm", calendar.timeInMillis)
+
+
+            val alarmSetting = AlarmSetting(this)
+            alarmSetting.setAlarm(calendar.timeInMillis)
+
+//            openWhatsApp( "6281333169082")
+
+//            showNotification(this, "Test", "Test Bosque", null)
+
+        }
+    }
+
+    private fun openWhatsApp(mobile: String) {
+        val sendIntent = Intent(Intent.ACTION_SEND)
+        sendIntent.type = "text/plain"
+        sendIntent.putExtra(Intent.EXTRA_TEXT, "This is my text to send. Sent by MY_APP")
+        sendIntent.putExtra("jid", "$mobile@s.whatsapp.net") //phone number without "+" prefix
+
+        sendIntent.setPackage("com.whatsapp")
+        if (intent.resolveActivity(getPackageManager()) == null) {
+            Toast.makeText(this, "Error/n", Toast.LENGTH_SHORT).show()
+            return
+        }
+        startActivity(sendIntent)
     }
 
     private fun checkAccess(): Boolean {
@@ -53,17 +123,54 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        val hasPermission = checkAccess()
-        "has access? $hasPermission".logd()
-        if (!hasPermission) {
-            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
-            && !Settings.canDrawOverlays(this)) {
-            askPermission()
+//        val hasPermission = checkAccess()
+//        "has access? $hasPermission".logd()
+//        if (!hasPermission) {
+//            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+//        }
+//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
+//            && !Settings.canDrawOverlays(this)) {
+//            askPermission()
+//        }
+
+        if (!isAccessibilityOn(this, WhatsappAccessibilityService::class.java)) {
+            val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+            startActivity(intent)
         }
 
 
+    }
+
+    private fun isAccessibilityOn(
+        context: Context,
+        clazz: Class<out AccessibilityService?>
+    ): Boolean {
+        var accessibilityEnabled = 0
+        val service = context.packageName + "/" + clazz.canonicalName
+        try {
+            accessibilityEnabled = Settings.Secure.getInt(
+                context.applicationContext.contentResolver,
+                Settings.Secure.ACCESSIBILITY_ENABLED
+            )
+        } catch (ignored: SettingNotFoundException) {
+        }
+        val colonSplitter = SimpleStringSplitter(':')
+        if (accessibilityEnabled == 1) {
+            val settingValue = Settings.Secure.getString(
+                context.applicationContext.contentResolver,
+                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+            )
+            if (settingValue != null) {
+                colonSplitter.setString(settingValue)
+                while (colonSplitter.hasNext()) {
+                    val accessibilityService = colonSplitter.next()
+                    if (accessibilityService.equals(service, ignoreCase = true)) {
+                        return true
+                    }
+                }
+            }
+        }
+        return false
     }
 
     @TargetApi(Build.VERSION_CODES.M)

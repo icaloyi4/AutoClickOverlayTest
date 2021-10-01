@@ -13,7 +13,7 @@ import androidx.annotation.StringRes
 private var toast: Toast? = null
 
 private fun Context.showToast(text: String, @Duration length: Int = Toast.LENGTH_SHORT) {
-    //先检查是否在主线程中运行，再进行处理
+
     if (Looper.myLooper() == Looper.getMainLooper()) {
         toast = toast ?: Toast.makeText(this.applicationContext, text, length)
         toast?.let {
